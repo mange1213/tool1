@@ -3,7 +3,7 @@
 A single workshop equipment app combining the File 1 and File 2 features, with File 1's red-and-black layout.
 
 ## Included features
-- Equipment register with categories, search, status, quantity, weight and CSV import/export template
+- Equipment register with categories, search, status, quantity, weight and CSV import template and Excel (.xlsx) exports
 - Worker records and archives
 - Multi-item check-out and check-in with due dates, inspection checks and notes
 - Damaged and missing equipment tracking
