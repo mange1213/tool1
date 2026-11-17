@@ -131,7 +131,7 @@ label,.muted,small{color:#d0d0d0}
 <section id="workers" class="page"><h2>Workers</h2><div class="toolbar"><button class="btn" onclick="openWorker()">+ Add Worker</button><input id="workerSearch" placeholder="Search worker or employee number"></div><div class="panel"><table><thead><tr><th>Name</th><th>Employee No.</th><th>Tools currently out</th><th>Actions</th></tr></thead><tbody id="workerRows"></tbody></table></div><div class="panel"><h3>Removed / Archived Workers</h3><div id="workerArchiveBox"></div></div></section>
 <section id="checkout" class="page"><div class="page-head"><div><h2>Check Out Equipment</h2><p>Select multiple equipment items, set quantities and issue them to a worker.</p></div></div><div class="checkout-layout"><div class="panel checkout-browser"><div class="checkout-toolbar"><div class="search-wrap"><span>⌕</span><input id="coSearch" placeholder="Search equipment..."></div><select id="coCategory"><option value="">All Categories</option></select><button class="btn search-btn" onclick="renderCheckoutEquipment()">⌕ Search</button></div><div class="co-table-head"><span></span><span>Equipment No.</span><span>Name</span><span>Category</span><span>Make</span><span>Weight (kg)</span><span>Qty Avail.</span><span></span></div><div id="coEquipmentList" class="checkout-list"></div></div><div class="checkout-side"><div class="panel selected-panel"><h3>☷ Selected Equipment</h3><div id="coSelectedSummary" class="selected-summary"><div class="muted">No equipment selected yet.</div></div></div><div class="panel checkout-form"><h3>👤 Worker</h3><label>Worker</label><select id="coWorker"></select><label>Issued By</label><input id="coIssuer" placeholder="Enter name"><label>Work Order / Reason</label><input id="coReason" placeholder="Enter work order or reason"><label>Due Date</label><input id="coDue" type="date"><h3 class="section-title">🛡️ Inspection</h3><label class="check"><input id="ci1" type="checkbox"> Pre-use inspection completed</label><label class="check"><input id="ci2" type="checkbox"> Equipment complete</label><label class="check"><input id="ci3" type="checkbox"> Safe / functional</label><h3 class="section-title">▤ Notes</h3><textarea id="coNotes" placeholder="Additional notes..."></textarea><button class="btn green full" onclick="checkoutTool()">✓ Check Out Selected</button><button class="btn gray full" onclick="clearCheckoutSelection()">↻ Clear Selection</button></div></div></div><div class="panel"><h3>Currently Checked Out</h3><div id="outRows"></div></div></section>
 <section id="history" class="page"><h2>History & Reports</h2><div class="toolbar"><select id="histCategory"><option value="">All categories</option></select><select id="histTool"></select><select id="histWorker"><option value="">All workers</option></select><input id="histFrom" type="date" title="From"><input id="histTo" type="date" title="To"><button class="btn" onclick="showHistory()">View History</button><button class="btn" onclick="exportHistoryExcel()">📥 Export Excel</button><button class="btn gray" onclick="printHistory()">🖨️ Print History</button></div><div class="panel" id="historyBox">Choose filters to view a report.</div></section>
-<section id="backup" class="page"><h2>Backup & Restore</h2><div class="panel"><h3>📱 Backup to your phone</h3><p>Download a complete backup file, or use Share if your phone supports it. The file contains equipment, workers, loans, history, categories and settings.</p><div class="toolbar"><button class="btn green" onclick="backup()">💾 Download Backup</button><button class="btn" onclick="shareBackup()">📤 Share / Save to Phone</button><label class="btn gray" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📥 Import Backup<input type="file" id="restoreFile" accept="application/json,.json" onchange="restore(this)" style="display:none"></label></div><div id="backupStatus" class="muted"></div><hr><h3>Automatic saving</h3><p class="muted">Changes are saved automatically in this browser. Use Download Backup or Share / Save to Phone to keep a separate copy outside the app.</p></div></section>
+<section id="backup" class="page"><h2>Backup & Restore</h2><div class="panel"><h3>📱 Backup to your phone</h3><p>Download a complete Excel or JSON backup, or use Share if your phone supports it. The backup contains equipment, workers, loans, history, users, categories and settings.</p><div class="toolbar"><button class="btn green" onclick="backupExcel()">📊 Download Excel Backup</button><button class="btn" onclick="backup()">💾 Download JSON Backup</button><button class="btn" onclick="shareBackup()">📤 Share / Save to Phone</button><label class="btn gray" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer">📥 Restore Backup (Excel or JSON)<input type="file" id="restoreFile" accept=".xlsx,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="restore(this)" style="display:none"></label></div><div id="backupStatus" class="muted"></div><hr><h3>Automatic saving</h3><p class="muted">Changes are saved automatically in this browser. Use Excel Backup, JSON Backup or Share / Save to Phone to keep a separate copy outside the app.</p></div></section>
 <section id="users" class="page"><h2>Users & Administration</h2><div class="panel"><h3>Current users</h3><div id="userRows"></div><button class="btn" onclick="addUser()">+ Add User</button></div></section>
 <section id="settings" class="page"><h2>Settings</h2><div class="panel"><div class="grid"><div><label>App name</label><input id="setName" value="Tool Management" readonly></div><div><label>Default due days</label><input id="setDue" type="number" min="0"></div><div><label>Due-soon reminder (days)</label><input id="setSoon" type="number" min="0"></div><div><label>Notifications</label><label class="check"><input id="setNotify" type="checkbox"> Enable browser reminders</label></div></div><br><button class="btn" onclick="requestNotifications()">🔔 Enable Notifications</button> <button class="btn green" onclick="saveSettings()">Save Settings</button></div><div class="panel"><h3>Data safety</h3><p>Use <b>Backup & Restore</b> regularly. Importing a backup replaces the current app data after confirmation.</p></div></section>
 </main></div><div class="water" aria-hidden="true"></div><div class="modal" id="modal"><div class="modalbox" id="modalbox"></div></div>
@@ -318,9 +318,51 @@ function printToolList(){
   w.document.close();
 }
 
-function backup(){let data=JSON.stringify(db,null,2);download('ToolManagement_Backup_'+today()+'.json',data,'application/json');$('backupStatus').textContent='Backup downloaded '+now()}
+function backup(){let data=JSON.stringify(db,null,2);download('ToolManagement_Backup_'+today()+'.json',data,'application/json');$('backupStatus').textContent='JSON backup downloaded '+now()}
+async function backupExcel(){
+  try{
+    const json=JSON.stringify(db);
+    const chunkSize=30000;
+    const chunks=[];
+    for(let i=0;i<json.length;i+=chunkSize)chunks.push([json.slice(i,i+chunkSize)]);
+    if(!chunks.length)chunks.push(['{}']);
+    await exportExcel('ToolManagement_Backup_'+today()+'.xlsx',['Complete app backup data (keep this column intact)'],chunks,'Backup Data');
+    $('backupStatus').textContent='Excel backup downloaded '+now()+' • '+chunks.length+' data row(s).';
+  }catch(e){console.error(e);alert('Could not create the Excel backup. Please try the JSON backup instead.')}
+}
 async function shareBackup(){let data=JSON.stringify(db,null,2),file=new File([data],'TechNorth_Backup_'+today()+'.json',{type:'application/json'});if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({title:'Tool Management Backup',text:'Tool Management app backup',files:[file]});$('backupStatus').textContent='Backup shared/saved successfully.'}catch(e){}}else backup()}
-async function restore(inp){let f=inp.files[0];if(!f)return;let r=new FileReader();r.onload=async()=>{try{let incoming=JSON.parse(r.result);if(!incoming||!Array.isArray(incoming.tools))throw Error();if(confirm('Importing will replace the current app data. Continue?')){db=incoming;db.tools=db.tools||[];db.archivedTools=db.archivedTools||[];normalize();save();alert('Backup restored successfully.')}}catch(e){alert('Invalid Tool Management backup file.')}};r.readAsText(f);inp.value=''}
+async function restore(inp){
+  const f=inp.files[0];if(!f)return;
+  try{
+    let incoming;
+    if(/\.xlsx$/i.test(f.name)){
+      if(typeof JSZip==='undefined')throw Error('Excel reader is unavailable.');
+      const archive=await JSZip.loadAsync(f);
+      const sheet=archive.file('xl/worksheets/sheet1.xml');
+      if(!sheet)throw Error('Backup worksheet not found.');
+      const xml=await sheet.async('text');
+      const doc=new DOMParser().parseFromString(xml,'application/xml');
+      if(doc.getElementsByTagName('parsererror').length)throw Error('Invalid Excel worksheet.');
+      const rowNodes=Array.from(doc.getElementsByTagName('row'));
+      const pieces=[];
+      for(let i=1;i<rowNodes.length;i++){
+        const cells=Array.from(rowNodes[i].getElementsByTagName('c'));
+        if(!cells.length)continue;
+        const textNode=cells[0].getElementsByTagName('t')[0];
+        if(textNode)pieces.push(textNode.textContent||'');
+      }
+      if(!pieces.length)throw Error('No backup data found in the Excel file.');
+      incoming=JSON.parse(pieces.join(''));
+    }else{
+      incoming=JSON.parse(await f.text());
+    }
+    if(!incoming||!Array.isArray(incoming.tools))throw Error('This file is not a valid Tool Management backup.');
+    if(confirm('Importing will replace the current app data. Continue?')){
+      db=incoming;db.tools=db.tools||[];db.workers=db.workers||[];db.events=db.events||[];db.users=db.users||[];db.categories=db.categories||[];db.loans=db.loans||[];db.archivedWorkers=db.archivedWorkers||[];db.archivedTools=db.archivedTools||[];db.settings=Object.assign({name:'Tool Management',dueDays:7,soonDays:2,notifications:false,autoBackup:true},db.settings||{});normalize();save();alert('Backup restored successfully.');
+    }
+  }catch(e){console.error(e);alert('Could not restore this file. Please use an Excel or JSON backup created by this app. '+(e.message||''))}
+  inp.value='';
+}
 function download(name,data,type){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function saveSettings(){db.settings.name='Tool Management';db.settings.dueDays=Math.max(0,Number($('setDue').value)||7);db.settings.soonDays=Math.max(0,Number($('setSoon').value)||2);db.settings.notifications=$('setNotify').checked;db.settings.autoBackup=$('autoBackup')?.checked??db.settings.autoBackup;if(save())alert('Settings saved in this browser.')}
 function loadSettings(){$('setName').value=db.settings.name;$('setDue').value=db.settings.dueDays;$('setSoon').value=db.settings.soonDays;$('setNotify').checked=!!db.settings.notifications;if($('autoBackup'))$('autoBackup').checked=db.settings.autoBackup}
